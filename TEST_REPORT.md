@@ -5,7 +5,9 @@ This report records what was actually executed on this checkout. Anything not ex
 
 ## Environment
 
-- AzerothCore WotLK 3.3.5a, core revision `c981b3b396e0+` on branch `feature/mod-world-party-scaling`.
+- AzerothCore WotLK 3.3.5a, core revision `c981b3b396e0+`; module sources at standalone commit
+  `519e6a3`, tested from a core checkout before extraction to
+  `https://github.com/Phanty78/mod-world-party-scaling`.
 - Host: macOS arm64, 10 cores; CMake 3.x, Unix Makefiles, Release build.
 - PCH build: `var/build` (configured with `USE_SCRIPTPCH=ON`).
 - No-PCH build: `var/build-nopch` (configured with `-DNOPCH=1`; Homebrew readline headers were
