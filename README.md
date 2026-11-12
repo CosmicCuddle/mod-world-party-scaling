@@ -4,8 +4,8 @@
 [![Codestyle Checks](https://github.com/Phanty78/mod-world-party-scaling/actions/workflows/core_codestyle.yml/badge.svg?branch=main)](https://github.com/Phanty78/mod-world-party-scaling/actions/workflows/core_codestyle.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-`mod-world-party-scaling` is an AzerothCore WotLK module that scales open-world creatures to the size of
-the online party that engages them. A creature pulled by a group of six receives the tier 6 health,
+`mod-world-party-scaling` is an AzerothCore WotLK module that scales eligible open-world creatures to the size of
+the nearby party that engages them. A creature pulled with six nearby group members receives the tier 6 health,
 damage and kill-XP coefficients; with the default coefficients, a solo pull uses tier 1 (1.00) and
 therefore the creature's reference (rate-free) statistics and unmodified kill XP.
 
@@ -36,10 +36,10 @@ and compatibility notes are in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 The group size is resolved from the player who owns the victim at the moment combat starts.
 
 - An ungrouped player counts as one.
-- With a group, the module walks `Group::GetFirstMember()` and counts entries whose `GetSource()` is
-  non-null. Those are the online members. A member who is dead, on another continent, in an instance,
-  flying or otherwise far away still counts.
-- Disconnected or logged-out characters are not in the group reference list and are excluded.
+- With a group, the module walks `Group::GetFirstMember()` and counts online members within normal
+  group reward distance of the engaged creature. The engaging player always counts.
+- Alive/dead state does not affect the scaling count. A dead member who is still nearby counts; a
+  distant member does not. Disconnected or logged-out characters are excluded.
 - The result is clamped from 1 to 6. Groups larger than six use the tier 6 coefficients. The server's
   six-player support comes from the `mod-six-player-party` module, which sets the runtime party cap
   to 6; `MAXGROUPSIZE` remains the core default 5, so only raid groups exceed six members.
@@ -53,11 +53,11 @@ The group size is resolved from the player who owns the victim at the moment com
 ## Combat lifecycle
 
 1. **First valid engagement.** On `OnUnitEnterCombat`, the victim is resolved to a player (directly or
-   through its owner). The creature is checked for eligibility: alive, in world, on a world map, not a
-   pet, guardian, totem, summon, controlled or charmed unit, not a guard, civilian or critter, not
+   through its owner). The creature is checked for eligibility: alive, in world, on a world map, not an
+   elite, rare elite or world boss, not a pet, guardian, totem, summon, controlled or charmed unit, not a guard, civilian or critter, not
    non-attackable or non-selectable, not evading, not friendly to the engaging player, and not excluded
    by entry, map or zone.
-2. **Tier and coefficients captured once.** The online group size selects a tier. Health and damage
+2. **Tier and coefficients captured once.** The nearby group size selects a tier. Health and damage
    coefficients, the tier, the pre-engagement health base flat modifier, the reference health and the
    current native rates are stored. The scaled base is applied, `UpdateMaxHealth()` composes auras, and
    the pre-engagement health percentage is reapplied. The stored tier also selects the XP coefficient
@@ -66,7 +66,8 @@ The group size is resolved from the player who owns the victim at the moment com
    `ObjectGuid` counters are map-scoped, so all three are required to avoid aliasing. Later entrants,
    group changes, members leaving or a second group engaging do not change the coefficients of an
    ongoing fight: the first valid engagement keeps the difficulty and the kill-XP tier for the whole
-   fight.
+   fight. A member dying, releasing or moving out of range after engagement therefore cannot reduce
+   the creature's active health or damage tier.
 4. **Reset on death, respawn or full out-of-combat.** `OnUnitExitCombat` and `OnUnitDeath` restore the
    stored health base flat modifier and call `UpdateMaxHealth()`, which recomposes auras. The current
    health percentage is sampled and reapplied (a dead creature stays at zero), the state is removed and
@@ -359,9 +360,9 @@ by both. Keep AutoBalance configured for dungeons and raids; the open world belo
 ### Six-player party support
 
 The server's six-player parties are provided by the `mod-six-player-party` module, which sets the
-runtime party cap to 6; `MAXGROUPSIZE` remains the core default 5. This module counts the same online
-members and clamps at six, so a six-player party always maps to tier 6. A raid group larger than six
-also uses tier 6 by design.
+runtime party cap to 6; `MAXGROUPSIZE` remains the core default 5. This module counts nearby online
+members and clamps at six, so six nearby members map to tier 6. Distant members do not raise the tier;
+a raid group with more than six nearby members also uses tier 6 by design.
 
 ### Other modules and creatures
 
