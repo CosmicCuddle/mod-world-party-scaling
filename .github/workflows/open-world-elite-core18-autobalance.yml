@@ -1,0 +1,135 @@
+name: WPS open-world elite exclusion Core18 coexistence
+on:
+  push:
+    branches:
+      - ci/cs01-open-world-elite-core18-autobalance-20261112
+  pull_request:
+    branches:
+      - naxxramas/exclude-world-elites
+permissions:
+  contents: read
+jobs:
+  worldserver:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 170
+    steps:
+      - name: Checkout exact Core18
+        uses: actions/checkout@v4
+        with:
+          repository: CosmicCuddle/azerothcore-wotlk
+          ref: 4eea6bb6edc634ef4b4eefab71a27adba29e28db
+          path: acore
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout exact Playerbots15
+        uses: actions/checkout@v4
+        with:
+          repository: CosmicCuddle/mod-playerbots
+          ref: 4b355ea3a8fd00a0b116681bf9db4c7a3eb0e051
+          path: acore/modules/mod-playerbots
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout exact IP164
+        uses: actions/checkout@v4
+        with:
+          repository: CosmicCuddle/mod-individual-progression
+          ref: 2b46cc76a23d97a0de66274b4a496a30a57c810f
+          path: acore/modules/mod-individual-progression
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout exact Naxx292
+        uses: actions/checkout@v4
+        with:
+          repository: CosmicCuddle/Mod-Naxxramas-Core
+          ref: 51d0611476358286505aed3ca806ea250f644f66
+          path: acore/modules/mod-naxxramas-core
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout current Character Services development tuple
+        uses: actions/checkout@v4
+        with:
+          repository: CosmicCuddle/mod-character-services
+          ref: f77ca491890f94cfb4d403d8d7a7361499d6ce59
+          path: acore/modules/mod-character-services
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout pinned public AutoBalance reference
+        uses: actions/checkout@v4
+        with:
+          repository: azerothcore/mod-autobalance
+          ref: 1d707cb61a0962ab01e4123681e2d3b66cc558a2
+          path: acore/modules/mod-autobalance
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout this WPS CI child
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: acore/modules/mod-world-party-scaling
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact WPS patch and safety contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          wps=acore/modules/mod-world-party-scaling
+          parent=410be49366bc199d72506bc5f26b556d6d897dd4
+          test "$(git -C "$wps" rev-parse "$parent")" = "$parent"
+          test "$(git -C "$wps" diff --name-only "$parent" HEAD)" = '.github/workflows/open-world-elite-core18-autobalance.yml'
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('acore/modules/mod-world-party-scaling/src/WorldPartyScaling.cpp')
+          s = p.read_text()
+          elig = s.split('bool IsCreatureEligible(Creature* creature, Player* engagingPlayer)', 1)[1].split('float GetHealthRate', 1)[0]
+          gate = 'if (!map || !map->IsWorldMap() || map->IsDungeon() || map->IsBattlegroundOrArena())'
+          assert gate in elig
+          for rank in ('CREATURE_ELITE_ELITE', 'CREATURE_ELITE_RAREELITE', 'CREATURE_ELITE_WORLDBOSS'):
+              assert rank in elig, rank
+          elite_block = elig.split('// Naxxramas: preserve native difficulty for open-world group content.', 1)[1].split('if (creature->IsPet()', 1)[0]
+          assert 'CREATURE_ELITE_RARE' not in elite_block.replace('CREATURE_ELITE_RAREELITE', ''), 'normal rares must remain eligible'
+          assert elig.index(gate) < elig.index('CREATURE_ELITE_ELITE'), 'map gate must remain first'
+          start = s.split('bool WorldPartyScalingMgr::TryStartScaling', 1)[1].split('bool WorldPartyScalingMgr::FindOrStartState', 1)[0]
+          assert start.index('IsCreatureEligible(creature, engagingPlayer)') < start.index('_active.emplace(key, state)')
+          for fn in ('ModifyMeleeDamage', 'ModifySpellDamageTaken', 'ModifyPeriodicDamageAurasTick'):
+              body = s.split('void WorldPartyScalingMgr::'+fn, 1)[1].split('void WorldPartyScalingMgr::', 1)[0]
+              assert 'FindOrStartState' in body, fn
+          xp = s.split('void WorldPartyScalingMgr::OnPlayerGiveXP', 1)[1].split('void WorldPartyScalingMgr::RestoreAndErase', 1)[0]
+          assert 'FindState(GetScalingKey(creature), state)' in xp
+          print('PASS elite/rare-elite/world-boss exclusion gates health, damage and XP state; normal rare remains eligible; instances remain rejected')
+          PY
+          test -z "$(git -C "$wps" diff --name-only main...410be49366bc199d72506bc5f26b556d6d897dd4 -- conf sql data 2>/dev/null || true)"
+
+      - name: Install disposable compile dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git cmake ninja-build g++ make pkg-config file libmysqlclient-dev libssl-dev libbz2-dev libreadline-dev libncurses-dev libboost-all-dev
+
+      - name: Configure exact module coexistence graph
+        run: |
+          cmake -S acore -B acore-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DMODULES=static -DSCRIPTS=static \
+            -DAPPS_BUILD=world-only -DTOOLS_BUILD=none \
+            -DUSE_COREPCH=ON -DUSE_SCRIPTPCH=ON
+
+      - name: Compile and link actual Worldserver
+        run: cmake --build acore-build --target worldserver --parallel 2
+
+      - name: Verify binary only — do not start server
+        run: |
+          test -s acore-build/src/server/apps/worldserver
+          test -x acore-build/src/server/apps/worldserver
+          echo 'PASS Core18 + WPS elite exclusion + public AutoBalance + PB15 + IP164 + Naxx292 + Character Services native link'
+
+      - name: Safety boundary
+        if: always()
+        run: |
+          echo 'No server start, SQL, DB, config, client, account, deployment or production operation.'
+          echo 'AutoBalance pin is public upstream reference only; installed owner AutoBalance commit remains unverified.'
