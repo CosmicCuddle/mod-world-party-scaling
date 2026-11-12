@@ -273,6 +273,13 @@ bool IsCreatureEligible(Creature* creature, Player* engagingPlayer)
     if (!map || !map->IsWorldMap() || map->IsDungeon() || map->IsBattlegroundOrArena())
         return false;
 
+    // Naxxramas: preserve native difficulty for open-world group content.
+    CreatureTemplate const* info = creature->GetCreatureTemplate();
+    if (info && (info->rank == CREATURE_ELITE_ELITE
+        || info->rank == CREATURE_ELITE_RAREELITE
+        || info->rank == CREATURE_ELITE_WORLDBOSS))
+        return false;
+
     if (creature->IsPet() || creature->IsGuardian() || creature->IsTotem() || creature->IsSummon()
         || creature->IsControlledByPlayer() || creature->IsCharmed())
         return false;
