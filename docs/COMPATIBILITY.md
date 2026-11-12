@@ -193,9 +193,11 @@ behaviour too, without interference. The module does not read or write AutoBalan
 Six-player parties are provided by the `mod-six-player-party` module, which implements the
 `GroupScript::GetMaxPartySize()` hook and raises the runtime party cap to 6. `MAXGROUPSIZE` remains the
 core default 5. `Group::GetFirstMember()` exposes the group's member reference list. The module walks
-that list and counts online members within normal group reward distance of the engaged creature; the
-engaging player always counts. Alive/dead state is deliberately ignored for scaling, so a nearby dead
-member still contributes to the engagement tier. Distant, disconnected and logged-out members do not.
+that list and counts online members whose current player position is within the core
+`CONFIG_GROUP_XP_DISTANCE` of the engaged creature. Alive/dead state is deliberately ignored for
+scaling, so a dead member still contributes while their player position remains nearby. After release,
+the ghost's current position is used for new engagements; a distant graveyard therefore does not count.
+Disconnected and logged-out members do not.
 
 The module clamps the result to 1-6. Six nearby members map to tier 6. More than six nearby members also
 use tier 6, because no tier above 6 is defined. The tier is captured once at engagement, so a member
