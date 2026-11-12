@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Naxxramas fork: open-world elite, rare elite and world-boss creatures are excluded from World Party Scaling and retain their native server difficulty and kill-XP behavior.
+- Naxxramas fork: engagement tiers now count only online group members whose current player position is within the core group-XP distance of the creature. Alive/dead state does not affect the count, and the captured tier remains frozen until the fight ends.
+- Installation documentation and CI badges now point to the CosmicCuddle fork so the custom behavior is not bypassed accidentally.
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
