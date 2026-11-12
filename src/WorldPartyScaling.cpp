@@ -212,23 +212,32 @@ Player* ResolvePlayer(Unit* unit)
     return unit ? unit->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
 }
 
-uint32 GetOnlineGroupSize(Player* player)
+uint32 GetNearbyGroupSize(Player* player, Creature* creature)
 {
-    if (!player)
+    if (!player || !creature)
         return 1;
 
     Group* group = player->GetGroup();
     if (!group)
         return 1;
 
-    uint32 onlineMembers = 0;
+    float const rewardDistance = sWorld->getFloatConfig(CONFIG_GROUP_XP_DISTANCE);
+    uint32 nearbyMembers = 0;
     for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
     {
-        if (reference->GetSource())
-            ++onlineMembers;
+        Player* member = reference->GetSource();
+        if (!member)
+            continue;
+
+        // Count the member's current world position, regardless of alive/dead state. This means a
+        // dead member still counts while nearby, while a released ghost only counts if it remains
+        // nearby. The tier is frozen once combat starts, so later releases or movement cannot make
+        // an active fight easier.
+        if (member->IsWithinDistInMap(creature, rewardDistance))
+            ++nearbyMembers;
     }
 
-    return std::clamp<uint32>(onlineMembers, 1, MaxGroupSize);
+    return std::clamp<uint32>(nearbyMembers, 1, MaxGroupSize);
 }
 
 // Mirrors KillRewarder::_InitGroupData/_groupRate: only alive members in the loot recipient's group that are the
@@ -454,7 +463,7 @@ bool WorldPartyScalingMgr::TryStartScaling(Creature* creature, Player* engagingP
     if (!IsCreatureEligible(creature, engagingPlayer))
         return false;
 
-    uint32 const groupSize = GetOnlineGroupSize(engagingPlayer);
+    uint32 const groupSize = GetNearbyGroupSize(engagingPlayer, creature);
 
     float const healthPct = creature->GetMaxHealth()
         ? static_cast<float>(creature->GetHealth()) / static_cast<float>(creature->GetMaxHealth())
@@ -673,7 +682,7 @@ void WorldPartyScalingMgr::LogStart(Creature* creature, ActiveScaling const& sta
         return;
 
     LOG_DEBUG("module",
-        "mod-world-party-scaling: scaling entry {} guid {} for online group size {} (tier {}): health x{:.2f} "
+        "mod-world-party-scaling: scaling entry {} guid {} for nearby group size {} (tier {}): health x{:.2f} "
         "base flat {:.2f} -> {} (reference {}, resulting max {}), melee x{:.2f} (old rate {:.2f}), "
         "spell x{:.2f} (old rate {:.2f}), xp x{:.2f}, old health rate {:.2f}",
         creature->GetEntry(), creature->GetGUID().ToString(), static_cast<uint32>(state.groupSize),
@@ -690,7 +699,7 @@ void WorldPartyScalingMgr::LogRestore(Creature* creature, ActiveScaling const& s
 
     LOG_DEBUG("module",
         "mod-world-party-scaling: restored entry {} guid {} to base flat {:.2f} (scaled base was {}, reference {}, "
-        "online group size {} (tier {}), health x{:.2f}, damage x{:.2f}, xp x{:.2f}), resulting max {}",
+        "nearby group size {} (tier {}), health x{:.2f}, damage x{:.2f}, xp x{:.2f}), resulting max {}",
         creature->GetEntry(), creature->GetGUID().ToString(), state.originalBaseFlat, state.scaledBaseMaxHealth,
         state.referenceMaxHealth, static_cast<uint32>(state.groupSize), static_cast<uint32>(state.groupSize),
         state.healthCoefficient, state.damageCoefficient,

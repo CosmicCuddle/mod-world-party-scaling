@@ -2,11 +2,11 @@
 
 This guide covers installing, verifying, disabling and removing `mod-world-party-scaling` on an
 AzerothCore WotLK server. Commands assume the core repository root is the working directory and the
-module is cloned from <https://github.com/Phanty78/mod-world-party-scaling> into
+module is cloned from <https://github.com/CosmicCuddle/mod-world-party-scaling> into
 `modules/mod-world-party-scaling`:
 
 ```bash
-git clone https://github.com/Phanty78/mod-world-party-scaling.git \
+git clone https://github.com/CosmicCuddle/mod-world-party-scaling.git \
   modules/mod-world-party-scaling
 ```
 

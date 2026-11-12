@@ -5,7 +5,9 @@
 #
 # Scales open-world creatures to the size of the party fighting them. A creature engaged by a
 # party receives the health, damage and kill-experience (XP) coefficients of that party's tier,
-# based on the number of online party members counted anywhere on any map. The module only acts
+# based on nearby online party members whose current player position is within the core group-XP
+# distance. Alive/dead state does not change that count; after release, the ghost's current position
+# is used for new engagements. The module only acts
 # on world maps (Map::IsWorldMap); dungeons, raids, battlegrounds and arenas are never modified.
 #
 # At engagement the module replaces the server's existing creature difficulty rates for the
@@ -16,7 +18,8 @@
 # coefficient. Instance rates and instance scaling are left exactly as they are.
 #
 # The health, damage and XP coefficients are experimental; adjust them to taste.
-# The group tier is selected at the moment combat starts and stays frozen for that fight. Health and
+# The group tier is selected at the moment combat starts and stays frozen for that fight. A party
+# member dying, releasing or moving away after engagement cannot lower the active tier. Health and
 # damage coefficients are captured with it; the XP coefficient for that tier is read when the kill is
 # rewarded.
 #
