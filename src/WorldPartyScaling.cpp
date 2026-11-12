@@ -221,6 +221,7 @@ uint32 GetNearbyGroupSize(Player* player, Creature* creature)
     if (!group)
         return 1;
 
+    float const rewardDistance = sWorld->getFloatConfig(CONFIG_GROUP_XP_DISTANCE);
     uint32 nearbyMembers = 0;
     for (GroupReference* reference = group->GetFirstMember(); reference; reference = reference->next())
     {
@@ -228,9 +229,11 @@ uint32 GetNearbyGroupSize(Player* player, Creature* creature)
         if (!member)
             continue;
 
-        // Dead members still count while nearby. The tier is frozen once combat starts, so later
-        // deaths, releases or movement cannot make an active fight easier.
-        if (member == player || member->IsAtGroupRewardDistance(creature))
+        // Count the member's current world position, regardless of alive/dead state. This means a
+        // dead member still counts while nearby, while a released ghost only counts if it remains
+        // nearby. The tier is frozen once combat starts, so later releases or movement cannot make
+        // an active fight easier.
+        if (member->IsWithinDistInMap(creature, rewardDistance))
             ++nearbyMembers;
     }
 
