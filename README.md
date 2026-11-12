@@ -36,10 +36,11 @@ and compatibility notes are in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 The group size is resolved from the player who owns the victim at the moment combat starts.
 
 - An ungrouped player counts as one.
-- With a group, the module walks `Group::GetFirstMember()` and counts online members within normal
-  group reward distance of the engaged creature. The engaging player always counts.
-- Alive/dead state does not affect the scaling count. A dead member who is still nearby counts; a
-  distant member does not. Disconnected or logged-out characters are excluded.
+- With a group, the module walks `Group::GetFirstMember()` and counts online members whose current
+  player position is within the core group-XP distance of the engaged creature.
+- Alive/dead state does not affect the scaling count. A dead member who is still nearby counts. After
+  release, the ghost's current position is used, so a ghost at a distant graveyard does not count on a
+  new engagement. Disconnected, logged-out or otherwise distant characters are excluded.
 - The result is clamped from 1 to 6. Groups larger than six use the tier 6 coefficients. The server's
   six-player support comes from the `mod-six-player-party` module, which sets the runtime party cap
   to 6; `MAXGROUPSIZE` remains the core default 5, so only raid groups exceed six members.
