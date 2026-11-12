@@ -193,12 +193,13 @@ behaviour too, without interference. The module does not read or write AutoBalan
 Six-player parties are provided by the `mod-six-player-party` module, which implements the
 `GroupScript::GetMaxPartySize()` hook and raises the runtime party cap to 6. `MAXGROUPSIZE` remains the
 core default 5. `Group::GetFirstMember()` exposes the group's member reference list. The module walks
-that list and counts only entries with a non-null `GetSource()`, i.e. online members. Position, map,
-instance, distance and alive/dead state do not matter for the count. Disconnected members are removed
-from the list and are not counted.
+that list and counts online members within normal group reward distance of the engaged creature; the
+engaging player always counts. Alive/dead state is deliberately ignored for scaling, so a nearby dead
+member still contributes to the engagement tier. Distant, disconnected and logged-out members do not.
 
-The module clamps the result to 1-6. A six-player party maps to tier 6. A raid group larger than six
-also maps to tier 6, because no tier above 6 is defined.
+The module clamps the result to 1-6. Six nearby members map to tier 6. More than six nearby members also
+use tier 6, because no tier above 6 is defined. The tier is captured once at engagement, so a member
+who later dies, releases or moves away cannot reduce the difficulty of that active fight.
 
 ## Other modules and creatures
 
